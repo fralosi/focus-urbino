@@ -1,7 +1,123 @@
-/* IMPORT DEVE ESSERE PRIMO */
+/* Import Leaflet CSS - DEVE essere primo */
 @import 'leaflet/dist/leaflet.css';
 
-/* POI TAILWIND */
+/* Tailwind CSS */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Custom Leaflet Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: #111827 !important;
+  border: 1px solid #374151 !important;
+}
+
+/* Hide default zoom controls */
+.leaflet-control-zoom {
+  display: none !important;
+}
+
+/* Custom marker pulse animation */
+@keyframes marker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+  }
+}
+/* Custom Album Cover Markers */
+.custom-marker-container {
+  background: none !important;
+  border: none !important;
+}
+
+.custom-marker {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #10B981;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);
+  transition: all 0.3s ease;
+}
+
+.custom-marker:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.6);
+}
+
+.album-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.marker-glow {
+  position: absolute;
+  top: -3px;
+  left: -3px;
+  right: -3px;
+  bottom: -3px;
+  border-radius: 50%;
+  background: linear-gradient(45deg, #10B981, #3B82F6, #8B5CF6);
+  animation: rotate-gradient 4s linear infinite;
+  z-index: -1;
+}
+
+.music-pulse {
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  right: -5px;
+  bottom: -5px;
+  border-radius: 50%;
+  border: 2px solid #10B981;
+  animation: music-pulse 2s infinite;
+  opacity: 0.6;
+}
+
+@keyframes rotate-gradient {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes music-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1.4);
+    opacity: 0;
+  }
+}
+
+/* Enhanced Popup Styling */
+.leaflet-popup-content-wrapper {
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 12px !important;
+  padding: 0 !important;
+}

@@ -5,6 +5,10 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        'sans': ['Inter', 'system-ui', 'sans-serif'],
+        'mono': ['JetBrains Mono', 'monospace'],
+      },
       colors: {
         spotify: '#1DB954',
         focus: {
@@ -12,6 +16,9 @@ module.exports = {
           purple: '#8B5CF6', 
           emerald: '#10B981',
         }
+      },
+      animation: {
+        'pulse-slow': 'pulse 3s infinite',
       }
     },
   },
