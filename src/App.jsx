@@ -1,10 +1,11 @@
 import Map from './components/Map';
+import PomodoroTimer from './components/PomodoroTimer';
 import './App.css';
 
 function App() {
   return (
     <div className="h-screen bg-gray-900 text-white overflow-hidden">
-      {/* Header Moderno */}
+      {/* Header */}
       <header className="absolute top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-md border-b border-gray-800">
         <div className="flex justify-between items-center px-6 py-4">
           <div className="flex items-center space-x-4">
@@ -17,15 +18,25 @@ function App() {
           <div className="flex items-center space-x-3">
             <div className="flex items-center space-x-2 bg-emerald-500/20 px-3 py-1 rounded-full">
               <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-emerald-300">2 online</span>
+              <span className="text-sm font-medium text-emerald-300">3 online</span>
             </div>
           </div>
         </div>
       </header>
       
-      {/* Mappa Full-Screen */}
+      {/* Mappa */}
       <div className="h-screen w-screen">
         <Map />
+      </div>
+
+      {/* TIMER CON Z-INDEX MASSIMO */}
+      <div style={{
+        position: 'fixed',
+        top: '120px',
+        left: '24px',
+        zIndex: 999999999
+      }}>
+        <PomodoroTimer />
       </div>
     </div>
   );

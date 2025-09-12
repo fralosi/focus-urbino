@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 const URBINO_CENTER = [43.7272, 12.6366];
 const URBINO_RADIUS = 3000;
 
-// Funzione per creare marker personalizzati con cover album
+// Funzione per marker personalizzati con cover funzionanti
 const createCustomMarker = (albumCover, username) => {
   const iconHtml = `
     <div class="custom-marker">
@@ -26,7 +26,7 @@ const createCustomMarker = (albumCover, username) => {
 };
 
 export default function Map() {
-  // Utenti con cover album simulate
+  // UTENTI CON COVER FUNZIONANTI
   const mockUsers = [
     {
       id: '1',
@@ -36,7 +36,7 @@ export default function Map() {
       current_track: { 
         track_name: 'Lo-fi Study Beats', 
         artist_name: 'Chillhop Music',
-        album_cover: 'https://via.placeholder.com/300x300/4f46e5/ffffff?text=🎵'
+        album_cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop&crop=center'
       }
     },
     {
@@ -47,7 +47,7 @@ export default function Map() {
       current_track: { 
         track_name: 'Focus Music', 
         artist_name: 'Brain.fm',
-        album_cover: 'https://via.placeholder.com/300x300/10b981/ffffff?text=🧠'
+        album_cover: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop&crop=center'
       }
     },
     {
@@ -58,7 +58,7 @@ export default function Map() {
       current_track: { 
         track_name: 'Deep Work', 
         artist_name: 'Ambient Sounds',
-        album_cover: 'https://via.placeholder.com/300x300/f59e0b/ffffff?text=⚡'
+        album_cover: 'https://images.unsplash.com/photo-1571974599782-87624638275c?w=300&h=300&fit=crop&crop=center'
       }
     }
   ];
@@ -98,7 +98,7 @@ export default function Map() {
           }}
         />
 
-        {/* Marker Custom con Cover Album */}
+        {/* Marker con cover funzionanti */}
         {mockUsers.map((user) => (
           <Marker 
             key={user.id} 
@@ -107,7 +107,6 @@ export default function Map() {
           >
             <Popup closeButton={false}>
               <div className="bg-gray-900 text-white p-4 rounded-xl shadow-2xl border border-gray-700 min-w-[250px]">
-                {/* Header con Avatar e Info */}
                 <div className="flex items-center space-x-3 mb-3">
                   <div className="w-10 h-10 bg-gradient-to-br from-emerald-400 to-emerald-600 rounded-full flex items-center justify-center text-white font-medium">
                     {user.username.charAt(0)}
@@ -121,7 +120,6 @@ export default function Map() {
                   </div>
                 </div>
 
-                {/* Track Info con Cover */}
                 <div className="flex items-center space-x-3 bg-gray-800 rounded-lg p-3">
                   <img 
                     src={user.current_track.album_cover} 
