@@ -1,0 +1,7 @@
+/* IMPORT DEVE ESSERE PRIMO */
+@import 'leaflet/dist/leaflet.css';
+
+/* POI TAILWIND */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
