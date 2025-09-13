@@ -102,25 +102,21 @@ function App() {
     setUser(null);
   };
 
-  // Fetch altri utenti in polling (senza join users!)
+  // Fetch altri utenti in polling (select '*' per sicurezza!)
   async function fetchOtherLocations() {
     if (!user) return;
     const { data, error } = await supabase
       .from("user_locations")
-      .select(`
-        user_id,
-        latitude,
-        longitude,
-        updated_at,
-        is_active,
-        current_track_name,
-        current_artist_name,
-        current_album_cover_url
-      `)
+      .select('*') // Prendi tutte le colonne, così la query non può sbagliare
       .neq("user_id", user.id)
       .eq("is_active", true)
       .gte("updated_at", new Date(Date.now() - 1000 * 60 * 10).toISOString());
-    if (!error) setOtherLocations(data || []);
+    if (!error) {
+      setOtherLocations(data || []);
+    }
+    if (error) {
+      console.error('Supabase fetch error:', error);
+    }
   }
 
   useEffect(() => {
