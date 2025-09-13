@@ -53,9 +53,8 @@ export default function Map({ userLocation, otherLocations = [] }) {
             position={[loc.latitude, loc.longitude]}
             icon={createCustomMarker(
               loc.current_album_cover_url ||
-                loc.users?.avatar_url ||
-                'https://ui-avatars.com/api/?name=' + (loc.users?.username || 'User'),
-              loc.users?.username || 'User'
+                'https://ui-avatars.com/api/?name=User',
+              'User'
             )}
           >
             <Popup closeButton={false}>
@@ -67,7 +66,7 @@ export default function Map({ userLocation, otherLocations = [] }) {
                 border: '1px solid #374151'
               }}>
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
-                  🎵 {loc.users?.username || 'User'}
+                  🎵 User
                 </h3>
                 {loc.current_track_name && (
                   <p style={{ margin: '0', fontSize: '12px', color: '#10B981' }}>

@@ -102,7 +102,7 @@ function App() {
     setUser(null);
   };
 
-  // Fetch altri utenti in polling
+  // Fetch altri utenti in polling (senza join users!)
   async function fetchOtherLocations() {
     if (!user) return;
     const { data, error } = await supabase
@@ -115,11 +115,7 @@ function App() {
         is_active,
         current_track_name,
         current_artist_name,
-        current_album_cover_url,
-        users: user_id (
-          username,
-          avatar_url
-        )
+        current_album_cover_url
       `)
       .neq("user_id", user.id)
       .eq("is_active", true)
