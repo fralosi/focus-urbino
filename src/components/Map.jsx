@@ -6,7 +6,6 @@ import 'leaflet/dist/leaflet.css';
 const URBINO_CENTER = [43.7272, 12.6366];
 const URBINO_RADIUS = 3000;
 
-// Funzione marker cover album per mock utenti e live
 function createCustomMarker(cover, username) {
   return L.divIcon({
     html: `
@@ -20,32 +19,6 @@ function createCustomMarker(cover, username) {
 }
 
 export default function Map({ userLocation, otherLocations = [] }) {
-  // SOLO per test locale: puoi lasciare vuoto quando i dati reali funzionano!
-  const mockUsers = [
-    {
-      id: '1',
-      username: 'Marco',
-      latitude: 43.7270,
-      longitude: 12.6360,
-      current_track: { 
-        track_name: 'Lo-fi Study Beats', 
-        artist_name: 'Chillhop Music',
-        album_cover: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop'
-      }
-    },
-    {
-      id: '2', 
-      username: 'Giulia',
-      latitude: 43.7275,
-      longitude: 12.6370,
-      current_track: { 
-        track_name: 'Focus Music', 
-        artist_name: 'Brain.fm',
-        album_cover: 'https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?w=300&h=300&fit=crop'
-      }
-    }
-  ];
-
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <MapContainer
@@ -73,16 +46,15 @@ export default function Map({ userLocation, otherLocations = [] }) {
           }}
         />
 
-        {/* ----- UTENTI LIVE DA SUPABASE ----- */}
+        {/* UTENTI LIVE */}
         {otherLocations.map((loc) => (
           <Marker
             key={loc.user_id}
             position={[loc.latitude, loc.longitude]}
             icon={createCustomMarker(
-              // Usa avatar vero se c'è, o una cover random placeholder
-              loc.users?.avatar_url ||
-                'https://ui-avatars.com/api/?name=' +
-                (loc.users?.username || 'User'),
+              loc.current_album_cover_url ||
+                loc.users?.avatar_url ||
+                'https://ui-avatars.com/api/?name=' + (loc.users?.username || 'User'),
               loc.users?.username || 'User'
             )}
           >
@@ -97,47 +69,33 @@ export default function Map({ userLocation, otherLocations = [] }) {
                 <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
                   🎵 {loc.users?.username || 'User'}
                 </h3>
-                {/* Qui puoi ancora completare con info custom 
-                    Se usi i track, devi aggiungerli al backend */}
-                <p style={{ margin: '0', fontSize: '11px', color: '#9CA3AF' }}>
-                  Online ora
-                </p>
+                {loc.current_track_name && (
+                  <p style={{ margin: '0', fontSize: '12px', color: '#10B981' }}>
+                    {loc.current_track_name}
+                  </p>
+                )}
+                {loc.current_artist_name && (
+                  <p style={{ margin: '0', fontSize: '11px', color: '#9CA3AF' }}>
+                    {loc.current_artist_name}
+                  </p>
+                )}
+                {loc.current_album_cover_url && (
+                  <img
+                    src={loc.current_album_cover_url}
+                    alt="cover"
+                    style={{
+                      width: 54, height: 54, borderRadius: 7, margin: "8px 0 0 0",
+                      boxShadow: "0 0 12px #1db95433"
+                    }}
+                  />
+                )}
+                <p style={{ margin: 0, fontSize: '11px', color: '#9CA3AF' }}>Online ora</p>
               </div>
             </Popup>
           </Marker>
         ))}
 
-        {/* ----- MOCK USERS: SOLO PER SVILUPPO/TEST ----- */}
-        {/* Elimina questa sezione quando hai gli utenti "veri" */}
-        {mockUsers.map((user) => (
-          <Marker 
-            key={user.id} 
-            position={[user.latitude, user.longitude]}
-            icon={createCustomMarker(user.current_track.album_cover, user.username)}
-          >
-            <Popup closeButton={false}>
-              <div style={{
-                background: '#1f2937',
-                color: 'white',
-                padding: '12px',
-                borderRadius: '8px',
-                border: '1px solid #374151'
-              }}>
-                <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
-                  🎵 {user.username}
-                </h3>
-                <p style={{ margin: '0', fontSize: '12px', color: '#10B981' }}>
-                  {user.current_track.track_name}
-                </p>
-                <p style={{ margin: '0', fontSize: '11px', color: '#9CA3AF' }}>
-                  {user.current_track.artist_name}
-                </p>
-              </div>
-            </Popup>
-          </Marker>
-        ))}
-
-        {/* ----- TU: marker posizione reale ----- */}
+        {/* TU: marker posizione reale */}
         {userLocation && (
           <Marker position={[userLocation.lat, userLocation.lng]}>
             <Popup closeButton={false}>
@@ -145,7 +103,6 @@ export default function Map({ userLocation, otherLocations = [] }) {
             </Popup>
           </Marker>
         )}
-
       </MapContainer>
     </div>
   );

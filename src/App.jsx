@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from "react";
-import { supabase } from "./lib/supabase";
-import { updateUserLocation } from "./lib/supabase";
+import { supabase, updateUserLocation } from "./lib/supabase";
 import Map from "./components/Map";
 import PomodoroTimer from "./components/PomodoroTimer";
 import AuthModal from "./components/AuthModal";
 
-const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f"; // <-- inserisci qui il tuo client id
-const SPOTIFY_REDIRECT_URI = "https://focus-urbino.vercel.app/"; // o tua URL di produzione 
+const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f";
+const SPOTIFY_REDIRECT_URI = "https://focus-urbino.vercel.app/";
 const SPOTIFY_SCOPES = [
   "user-read-currently-playing",
   "user-read-playback-state"
@@ -29,12 +28,10 @@ function App() {
   const [userLocation, setUserLocation] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState("");
   const [otherLocations, setOtherLocations] = useState([]);
-
-  // SPOTIFY stato
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyTrack, setSpotifyTrack] = useState(null);
 
-  // Recupera access_token Spotify dalla URL (dopo login)
+  // Recupera access_token Spotify dalla URL
   useEffect(() => {
     const hash = window.location.hash;
     if (hash && hash.includes("access_token")) {
@@ -47,7 +44,7 @@ function App() {
     }
   }, []);
 
-  // AUTH STATE LISTENER
+  // Auth listener
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data?.user ?? null);
@@ -58,7 +55,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Chiedi posizione dopo login
+  // Richiesta posizione e salvataggio su Supabase + traccia
   useEffect(() => {
     if (user) {
       askGeoLocation();
@@ -66,8 +63,7 @@ function App() {
     // eslint-disable-next-line
   }, [user]);
 
-  // Richiesta posizione e salvataggio su Supabase
-  function askGeoLocation() {
+  async function askGeoLocation() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
@@ -77,7 +73,14 @@ function App() {
         };
         setUserLocation(locationObj);
         if (user && user.id) {
-          await updateUserLocation(user.id, locationObj.lat, locationObj.lng);
+          await updateUserLocation(
+            user.id,
+            locationObj.lat,
+            locationObj.lng,
+            spotifyTrack?.item?.name ?? null,
+            spotifyTrack?.item?.artists?.map(a => a.name).join(", ") ?? null,
+            spotifyTrack?.item?.album?.images?.[0]?.url ?? null
+          );
         }
       },
       (err) => {
@@ -87,7 +90,6 @@ function App() {
     );
   }
 
-  // Welcomemsg toast
   function showWelcomeMsg(user) {
     if (!user) return;
     setWelcomeMsg(`Benvenuto su Focus Urbino, ${user.email}!`);
@@ -100,7 +102,7 @@ function App() {
     setUser(null);
   };
 
-  // FETCH altri utenti (polling)
+  // Fetch altri utenti in polling
   async function fetchOtherLocations() {
     if (!user) return;
     const { data, error } = await supabase
@@ -110,6 +112,10 @@ function App() {
         latitude,
         longitude,
         updated_at,
+        is_active,
+        current_track_name,
+        current_artist_name,
+        current_album_cover_url,
         users: user_id (
           username,
           avatar_url
@@ -131,30 +137,46 @@ function App() {
     // eslint-disable-next-line
   }, [user]);
 
-  // ======== SPOTIFY: Bottone login e recupero traccia attuale
+  // Aggiungi questa funzione centrale:
+  async function updateLocationAndTrack(spotifyTrackData) {
+    if (!user || !userLocation) return;
+    await updateUserLocation(
+      user.id,
+      userLocation.lat,
+      userLocation.lng,
+      spotifyTrackData?.item?.name ?? null,
+      spotifyTrackData?.item?.artists?.map(a => a.name).join(', ') ?? null,
+      spotifyTrackData?.item?.album?.images?.[0]?.url ?? null
+    );
+  }
+
+  // Spotify: Bottone login
   function handleSpotifyConnect() {
     window.location = getSpotifyAuthUrl();
   }
 
-  // Dopo login, recupera la traccia attuale
+  // Recupera brano attuale Spotify e aggiorna anche la location
   useEffect(() => {
     async function fetchCurrentlyPlaying() {
       if (!spotifyToken) return;
       const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
         headers: { Authorization: `Bearer ${spotifyToken}` }
       });
-      if (resp.status === 204) return setSpotifyTrack(null); // nulla in ascolto
+      if (resp.status === 204) {
+        setSpotifyTrack(null);
+        updateLocationAndTrack(null);
+        return;
+      }
       const data = await resp.json();
       setSpotifyTrack(data);
+      updateLocationAndTrack(data);
     }
     if (spotifyToken) {
       fetchCurrentlyPlaying();
-      // refresh ogni 20 sec
       const interval = setInterval(fetchCurrentlyPlaying, 20000);
       return () => clearInterval(interval);
     }
-  }, [spotifyToken]);
-
+  }, [spotifyToken, userLocation, user]);
 
   return (
     <div style={{
@@ -182,7 +204,7 @@ function App() {
             boxShadow: "0 8px 32px #10b98177",
             zIndex: 99999,
             opacity: 0.94,
-            transition: "all .3s",
+            transition: "all .3s"
           }}
         >
           {welcomeMsg}
@@ -315,7 +337,7 @@ function App() {
               {spotifyTrack.item.name}
             </div>
             <div style={{ fontSize: 13, color: "#40fa91" }}>
-              {spotifyTrack.item.artists.map(a=>a.name).join(", ")}
+              {spotifyTrack.item.artists.map(a => a.name).join(", ")}
             </div>
             <div style={{ fontSize: 12, color: "#a3ffa3" }}>
               {spotifyTrack.item.album.name}
