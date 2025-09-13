@@ -63,6 +63,30 @@ function App() {
     // eslint-disable-next-line
   }, [user]);
 
+  // Recupera brano attuale Spotify e aggiorna anche la location
+useEffect(() => {
+  async function fetchCurrentlyPlaying() {
+    if (!spotifyToken) return;
+    const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+      headers: { Authorization: `Bearer ${spotifyToken}` }
+    });
+    if (resp.status === 204) {
+      setSpotifyTrack(null);
+      updateLocationAndTrack(null);
+      return;
+    }
+    const data = await resp.json();
+    setSpotifyTrack(data);
+    console.log('DEBUG SPOTIFY TRACK RAW:', data); // <-- DEBUG qui!
+    updateLocationAndTrack(data);
+  }
+  if (spotifyToken) {
+    fetchCurrentlyPlaying();
+    const interval = setInterval(fetchCurrentlyPlaying, 20000);
+    return () => clearInterval(interval);
+  }
+}, [spotifyToken, userLocation, user]);
+
   async function askGeoLocation() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
