@@ -102,12 +102,12 @@ function App() {
     setUser(null);
   };
 
-  // Fetch altri utenti in polling (select '*' per sicurezza!)
+  // Fetch altri utenti in polling (select '*' per sicurezza e debug dettagliato)
   async function fetchOtherLocations() {
     if (!user) return;
     const { data, error } = await supabase
       .from("user_locations")
-      .select('*') // Prendi tutte le colonne, così la query non può sbagliare
+      .select('*') // Prendi tutte le colonne
       .neq("user_id", user.id)
       .eq("is_active", true)
       .gte("updated_at", new Date(Date.now() - 1000 * 60 * 10).toISOString());
@@ -115,7 +115,15 @@ function App() {
       setOtherLocations(data || []);
     }
     if (error) {
-      console.error('Supabase fetch error:', error);
+      console.error('Supabase fetch error:', {
+        error,
+        status: error.status,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      alert("Supabase error: " + (error.message || error.details || JSON.stringify(error)));
     }
   }
 
@@ -129,7 +137,7 @@ function App() {
     // eslint-disable-next-line
   }, [user]);
 
-  // Aggiungi questa funzione centrale:
+  // Funzione centrale per aggiornare posizione/traccia
   async function updateLocationAndTrack(spotifyTrackData) {
     if (!user || !userLocation) return;
     await updateUserLocation(
