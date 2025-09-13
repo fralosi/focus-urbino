@@ -180,6 +180,7 @@ function App() {
       }
       const data = await resp.json();
       setSpotifyTrack(data);
+      console.log('DEBUG SPOTIFY TRACK:', data);
       updateLocationAndTrack(data);
     }
     if (spotifyToken) {
@@ -227,7 +228,12 @@ function App() {
         position: "absolute",
         top: 0, left: 0, right: 0, bottom: 0, zIndex: 1
       }}>
-        <Map user={user} userLocation={userLocation} otherLocations={otherLocations} spotifyTrack={spotifyTrack} />
+        <Map 
+          user={user} 
+          userLocation={userLocation} 
+          otherLocations={otherLocations} 
+          spotifyTrack={spotifyTrack} 
+        />
       </div>
 
       {/* Header sopra */}

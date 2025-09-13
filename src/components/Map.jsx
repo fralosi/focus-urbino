@@ -19,7 +19,6 @@ function createCustomMarker(cover, username) {
 }
 
 export default function Map({ user, userLocation, otherLocations = [], spotifyTrack }) {
-  // Per il marker personale, ricava dati da props (che puoi passare direttamente da App.jsx!)
   const track = spotifyTrack?.item?.name ?? null;
   const artist = spotifyTrack?.item?.artists?.map(a => a.name).join(', ') ?? null;
   const cover = spotifyTrack?.item?.album?.images?.[0]?.url ?? null;
