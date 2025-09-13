@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { supabase, updateUserLocation } from "./lib/supabase";
+import { supabase } from "./lib/supabase";
 import Map from "./components/Map";
 import PomodoroTimer from "./components/PomodoroTimer";
 import AuthModal from "./components/AuthModal";
@@ -73,14 +73,7 @@ function App() {
         };
         setUserLocation(locationObj);
         if (user && user.id) {
-          await updateUserLocation(
-            user.id,
-            locationObj.lat,
-            locationObj.lng,
-            spotifyTrack?.item?.name ?? null,
-            spotifyTrack?.item?.artists?.map(a => a.name).join(", ") ?? null,
-            spotifyTrack?.item?.album?.images?.[0]?.url ?? null
-          );
+          await updateLocationAndTrack(spotifyTrack);
         }
       },
       (err) => {
@@ -107,7 +100,7 @@ function App() {
     if (!user) return;
     const { data, error } = await supabase
       .from("user_locations")
-      .select('*') // Prendi tutte le colonne
+      .select('*')
       .neq("user_id", user.id)
       .eq("is_active", true)
       .gte("updated_at", new Date(Date.now() - 1000 * 60 * 10).toISOString());
@@ -123,7 +116,7 @@ function App() {
         details: error.details,
         hint: error.hint
       });
-      alert("Supabase error: " + (error.message || error.details || JSON.stringify(error)));
+      alert("Supabase fetch error: " + (error.message || error.details || JSON.stringify(error)));
     }
   }
 
@@ -140,14 +133,32 @@ function App() {
   // Funzione centrale per aggiornare posizione/traccia
   async function updateLocationAndTrack(spotifyTrackData) {
     if (!user || !userLocation) return;
-    await updateUserLocation(
-      user.id,
-      userLocation.lat,
-      userLocation.lng,
-      spotifyTrackData?.item?.name ?? null,
-      spotifyTrackData?.item?.artists?.map(a => a.name).join(', ') ?? null,
-      spotifyTrackData?.item?.album?.images?.[0]?.url ?? null
-    );
+    const payload = {
+      user_id: user.id,
+      latitude: userLocation.lat,
+      longitude: userLocation.lng,
+      is_active: true,
+      updated_at: new Date().toISOString(),
+      current_track_name: spotifyTrackData?.item?.name ?? null,
+      current_artist_name: spotifyTrackData?.item?.artists?.map(a => a.name).join(', ') ?? null,
+      current_album_cover_url: spotifyTrackData?.item?.album?.images?.[0]?.url ?? null
+    };
+    // Debug completo!
+    console.log('SUPABASE UPSERT PAYLOAD:', payload);
+    const { error } = await supabase
+      .from('user_locations')
+      .upsert(payload, { onConflict: 'user_id' });
+    if (error) {
+      console.error('Supabase UPSERT ERROR:', {
+        error,
+        status: error.status,
+        message: error.message,
+        code: error.code,
+        details: error.details,
+        hint: error.hint
+      });
+      alert('Supabase UPSERT error: ' + (error.message || error.details || JSON.stringify(error)));
+    }
   }
 
   // Spotify: Bottone login
