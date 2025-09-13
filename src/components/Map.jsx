@@ -3,35 +3,23 @@ import { MapContainer, TileLayer, Circle, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
-// Fix icone Leaflet
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
-
 const URBINO_CENTER = [43.7272, 12.6366];
 const URBINO_RADIUS = 3000;
 
-const createCustomMarker = (albumCover, username) => {
-  const iconHtml = `
-    <div class="custom-marker">
-      <img src="${albumCover}" alt="Album cover" class="album-cover" 
-           style="width: 40px; height: 40px; border-radius: 50%; border: 3px solid #10B981; box-shadow: 0 0 10px rgba(16,185,129,0.5);" />
-    </div>
-  `;
-  
+// -- Funzione per marker custom mock (lascia come già ce l'hai)
+function createCustomMarker(cover, username) {
   return L.divIcon({
-    html: iconHtml,
-    className: 'custom-marker-container',
-    iconSize: [46, 46],
-    iconAnchor: [23, 23],
-    popupAnchor: [0, -25]
+    html: `
+      <div style="width:44px;height:44px;border-radius:50%;overflow:hidden;border:2px solid #10B981;box-shadow:0 0 8px #10B98144;">
+        <img src="${cover}" alt="${username}" style="width:100%;height:100%;object-fit:cover;" />
+      </div>
+    `,
+    iconSize: [44, 44],
+    className: ""
   });
-};
+}
 
-export default function Map() {
+export default function Map({ userLocation }) {
   const mockUsers = [
     {
       id: '1',
@@ -60,7 +48,7 @@ export default function Map() {
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <MapContainer
-        center={URBINO_CENTER}
+        center={userLocation ? [userLocation.lat, userLocation.lng] : URBINO_CENTER}
         zoom={15}
         style={{ height: '100%', width: '100%' }}
         zoomControl={false}
@@ -84,6 +72,7 @@ export default function Map() {
           }}
         />
 
+        {/* Markers utenti finti */}
         {mockUsers.map((user) => (
           <Marker 
             key={user.id} 
@@ -111,6 +100,16 @@ export default function Map() {
             </Popup>
           </Marker>
         ))}
+
+        {/* Marker della TUA posizione reale */}
+        {userLocation && (
+          <Marker position={[userLocation.lat, userLocation.lng]}>
+            <Popup closeButton={false}>
+              <b style={{ color: "#10B981" }}>Sei qui</b>
+            </Popup>
+          </Marker>
+        )}
+
       </MapContainer>
     </div>
   );

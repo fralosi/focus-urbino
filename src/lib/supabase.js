@@ -6,26 +6,22 @@ const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYm
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
+export async function updateUserLocation(userId, lat, lng) {
+  return await supabase
+    .from('user_locations')
+    .upsert({
+      user_id: userId,
+      latitude: lat,
+      longitude: lng,
+      is_active: true,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
+}
+
 // Funzioni helper per l'app
 export const getCurrentUser = () => supabase.auth.getUser()
 
 export const signOut = () => supabase.auth.signOut()
-
-export const updateUserLocation = async (userId, latitude, longitude) => {
-  const { data, error } = await supabase
-    .from('user_locations')
-    .upsert({
-      user_id: userId,
-      latitude,
-      longitude,
-      is_active: true,
-      updated_at: new Date().toISOString()
-    }, {
-      onConflict: 'user_id'
-    });
-  
-  return { data, error };
-}
 
 export const saveFocusSession = async (userId, durationMinutes, sessionType = 'focus') => {
   const { data, error } = await supabase
