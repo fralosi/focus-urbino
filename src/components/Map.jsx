@@ -18,7 +18,12 @@ function createCustomMarker(cover, username) {
   });
 }
 
-export default function Map({ userLocation, otherLocations = [] }) {
+export default function Map({ user, userLocation, otherLocations = [], spotifyTrack }) {
+  // Per il marker personale, ricava dati da props (che puoi passare direttamente da App.jsx!)
+  const track = spotifyTrack?.item?.name ?? null;
+  const artist = spotifyTrack?.item?.artists?.map(a => a.name).join(', ') ?? null;
+  const cover = spotifyTrack?.item?.album?.images?.[0]?.url ?? null;
+
   return (
     <div style={{ width: '100%', height: '100%' }}>
       <MapContainer
@@ -46,7 +51,7 @@ export default function Map({ userLocation, otherLocations = [] }) {
           }}
         />
 
-        {/* UTENTI LIVE */}
+        {/* Marker ALTRI UTENTI */}
         {otherLocations.map((loc) => (
           <Marker
             key={loc.user_id}
@@ -94,11 +99,50 @@ export default function Map({ userLocation, otherLocations = [] }) {
           </Marker>
         ))}
 
-        {/* TU: marker posizione reale */}
+        {/* TU: marker personale CON info canzone */}
         {userLocation && (
-          <Marker position={[userLocation.lat, userLocation.lng]}>
+          <Marker
+            position={[userLocation.lat, userLocation.lng]}
+            icon={createCustomMarker(
+              cover || 'https://ui-avatars.com/api/?name=You',
+              user?.email || 'You'
+            )}
+          >
             <Popup closeButton={false}>
-              <b style={{ color: "#10B981" }}>Sei qui</b>
+              <div style={{
+                background: '#1f2937',
+                color: 'white',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #374151'
+              }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
+                  🎵 {user?.email || 'Tu'}
+                </h3>
+                {track && (
+                  <p style={{ margin: '0', fontSize: '12px', color: '#10B981' }}>
+                    {track}
+                  </p>
+                )}
+                {artist && (
+                  <p style={{ margin: '0', fontSize: '11px', color: '#9CA3AF' }}>
+                    {artist}
+                  </p>
+                )}
+                {cover && (
+                  <img
+                    src={cover}
+                    alt="cover"
+                    style={{
+                      width: 54, height: 54, borderRadius: 7, margin: "8px 0 0 0",
+                      boxShadow: "0 0 12px #1db95433"
+                    }}
+                  />
+                )}
+                <p style={{ margin: 0, fontSize: '11px', color: '#34d399' }}>
+                  Questa è la tua posizione attuale
+                </p>
+              </div>
             </Popup>
           </Marker>
         )}
