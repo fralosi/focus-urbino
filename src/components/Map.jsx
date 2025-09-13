@@ -6,7 +6,7 @@ import 'leaflet/dist/leaflet.css';
 const URBINO_CENTER = [43.7272, 12.6366];
 const URBINO_RADIUS = 3000;
 
-// -- Funzione per marker custom mock (lascia come già ce l'hai)
+// Funzione marker cover album per mock utenti e live
 function createCustomMarker(cover, username) {
   return L.divIcon({
     html: `
@@ -19,7 +19,8 @@ function createCustomMarker(cover, username) {
   });
 }
 
-export default function Map({ userLocation }) {
+export default function Map({ userLocation, otherLocations = [] }) {
+  // SOLO per test locale: puoi lasciare vuoto quando i dati reali funzionano!
   const mockUsers = [
     {
       id: '1',
@@ -58,7 +59,7 @@ export default function Map({ userLocation }) {
           url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
           attribution='&copy; CARTO'
         />
-        
+
         <Circle
           center={URBINO_CENTER}
           radius={URBINO_RADIUS}
@@ -72,7 +73,42 @@ export default function Map({ userLocation }) {
           }}
         />
 
-        {/* Markers utenti finti */}
+        {/* ----- UTENTI LIVE DA SUPABASE ----- */}
+        {otherLocations.map((loc) => (
+          <Marker
+            key={loc.user_id}
+            position={[loc.latitude, loc.longitude]}
+            icon={createCustomMarker(
+              // Usa avatar vero se c'è, o una cover random placeholder
+              loc.users?.avatar_url ||
+                'https://ui-avatars.com/api/?name=' +
+                (loc.users?.username || 'User'),
+              loc.users?.username || 'User'
+            )}
+          >
+            <Popup closeButton={false}>
+              <div style={{
+                background: '#1f2937',
+                color: 'white',
+                padding: '12px',
+                borderRadius: '8px',
+                border: '1px solid #374151'
+              }}>
+                <h3 style={{ margin: '0 0 8px 0', fontSize: '14px' }}>
+                  🎵 {loc.users?.username || 'User'}
+                </h3>
+                {/* Qui puoi ancora completare con info custom 
+                    Se usi i track, devi aggiungerli al backend */}
+                <p style={{ margin: '0', fontSize: '11px', color: '#9CA3AF' }}>
+                  Online ora
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {/* ----- MOCK USERS: SOLO PER SVILUPPO/TEST ----- */}
+        {/* Elimina questa sezione quando hai gli utenti "veri" */}
         {mockUsers.map((user) => (
           <Marker 
             key={user.id} 
@@ -101,7 +137,7 @@ export default function Map({ userLocation }) {
           </Marker>
         ))}
 
-        {/* Marker della TUA posizione reale */}
+        {/* ----- TU: marker posizione reale ----- */}
         {userLocation && (
           <Marker position={[userLocation.lat, userLocation.lng]}>
             <Popup closeButton={false}>

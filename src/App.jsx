@@ -1,18 +1,53 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
-import { updateUserLocation } from "./lib/supabase"; // <-- Assicurati sia esportata!
+import { updateUserLocation } from "./lib/supabase";
 import Map from "./components/Map";
 import PomodoroTimer from "./components/PomodoroTimer";
 import AuthModal from "./components/AuthModal";
 
+const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f"; // <-- inserisci qui il tuo client id
+const SPOTIFY_REDIRECT_URI = "https://focus-urbino.vercel.app/"; // o tua URL di produzione 
+const SPOTIFY_SCOPES = [
+  "user-read-currently-playing",
+  "user-read-playback-state"
+];
+
+function getSpotifyAuthUrl() {
+  const params = new URLSearchParams({
+    client_id: SPOTIFY_CLIENT_ID,
+    redirect_uri: SPOTIFY_REDIRECT_URI,
+    response_type: "token",
+    scope: SPOTIFY_SCOPES.join(" "),
+    show_dialog: "true"
+  });
+  return `https://accounts.spotify.com/authorize?${params}`;
+}
+
 function App() {
-  // Stato per login, user, posizione, messaggio benvenuto
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState(null);
   const [userLocation, setUserLocation] = useState(null);
   const [welcomeMsg, setWelcomeMsg] = useState("");
+  const [otherLocations, setOtherLocations] = useState([]);
 
-  // Ogni volta che cambia la sessione utente su Supabase, aggiorniamo lo stato!
+  // SPOTIFY stato
+  const [spotifyToken, setSpotifyToken] = useState(null);
+  const [spotifyTrack, setSpotifyTrack] = useState(null);
+
+  // Recupera access_token Spotify dalla URL (dopo login)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash && hash.includes("access_token")) {
+      const params = new URLSearchParams(hash.substring(1));
+      const token = params.get("access_token");
+      if (token) {
+        setSpotifyToken(token);
+        window.location.hash = "";
+      }
+    }
+  }, []);
+
+  // AUTH STATE LISTENER
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
       setUser(data?.user ?? null);
@@ -23,7 +58,7 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // Ogni volta che l'utente diventa loggato, chiedi il consenso GPS e salva su Supabase
+  // Chiedi posizione dopo login
   useEffect(() => {
     if (user) {
       askGeoLocation();
@@ -31,7 +66,7 @@ function App() {
     // eslint-disable-next-line
   }, [user]);
 
-  // Funzione per richiedere posizione e salvare su Supabase
+  // Richiesta posizione e salvataggio su Supabase
   function askGeoLocation() {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -52,7 +87,7 @@ function App() {
     );
   }
 
-  // Messaggio di benvenuto
+  // Welcomemsg toast
   function showWelcomeMsg(user) {
     if (!user) return;
     setWelcomeMsg(`Benvenuto su Focus Urbino, ${user.email}!`);
@@ -65,6 +100,62 @@ function App() {
     setUser(null);
   };
 
+  // FETCH altri utenti (polling)
+  async function fetchOtherLocations() {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("user_locations")
+      .select(`
+        user_id,
+        latitude,
+        longitude,
+        updated_at,
+        users: user_id (
+          username,
+          avatar_url
+        )
+      `)
+      .neq("user_id", user.id)
+      .eq("is_active", true)
+      .gte("updated_at", new Date(Date.now() - 1000 * 60 * 10).toISOString());
+    if (!error) setOtherLocations(data || []);
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    fetchOtherLocations();
+    const interval = setInterval(() => {
+      fetchOtherLocations();
+    }, 10000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, [user]);
+
+  // ======== SPOTIFY: Bottone login e recupero traccia attuale
+  function handleSpotifyConnect() {
+    window.location = getSpotifyAuthUrl();
+  }
+
+  // Dopo login, recupera la traccia attuale
+  useEffect(() => {
+    async function fetchCurrentlyPlaying() {
+      if (!spotifyToken) return;
+      const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+        headers: { Authorization: `Bearer ${spotifyToken}` }
+      });
+      if (resp.status === 204) return setSpotifyTrack(null); // nulla in ascolto
+      const data = await resp.json();
+      setSpotifyTrack(data);
+    }
+    if (spotifyToken) {
+      fetchCurrentlyPlaying();
+      // refresh ogni 20 sec
+      const interval = setInterval(fetchCurrentlyPlaying, 20000);
+      return () => clearInterval(interval);
+    }
+  }, [spotifyToken]);
+
+
   return (
     <div style={{
       position: "relative",
@@ -75,7 +166,7 @@ function App() {
       minHeight: "100vh",
       overflow: "hidden"
     }}>
-      {/* MESSAGGIO BENVENUTO */}
+      {/* TOAST benvenuto */}
       {welcomeMsg && (
         <div
           style={{
@@ -103,10 +194,10 @@ function App() {
         position: "absolute",
         top: 0, left: 0, right: 0, bottom: 0, zIndex: 1
       }}>
-        <Map user={user} userLocation={userLocation} />
+        <Map user={user} userLocation={userLocation} otherLocations={otherLocations} />
       </div>
 
-      {/* Header e auth UI */}
+      {/* Header sopra */}
       <header style={{
         position: "absolute",
         top: 0, left: 0, right: 0, zIndex: 10,
@@ -135,6 +226,27 @@ function App() {
             }}>
               {user.email}
             </span>
+            {/* SPOTIFY BUTTON / STATUS */}
+            {!spotifyToken ? (
+              <button
+                onClick={handleSpotifyConnect}
+                style={{
+                  background: "#1DB954",
+                  color: "white",
+                  fontWeight: 600,
+                  padding: "10px 18px",
+                  border: "none",
+                  borderRadius: 8,
+                  cursor: "pointer"
+                }}
+              >
+                🎵 Collega Spotify
+              </button>
+            ) : (
+              <span style={{ color: "#1DB954", fontWeight: 600 }}>
+                Spotify collegato!
+              </span>
+            )}
             <button
               onClick={handleLogout}
               style={{
@@ -161,7 +273,7 @@ function App() {
         )}
       </header>
 
-      {/* Timer */}
+      {/* TIMER */}
       <div style={{
         position: "absolute",
         left: "32px",
@@ -170,6 +282,47 @@ function App() {
       }}>
         <PomodoroTimer />
       </div>
+
+      {/* BOX ORA IN ASCOLTO SPOTIFY */}
+      {spotifyToken && spotifyTrack && spotifyTrack.item && (
+        <div
+          style={{
+            position: "fixed",
+            top: 90,
+            right: 35,
+            background: "#181c22",
+            color: "#fff",
+            border: "2px solid #1DB954",
+            borderRadius: 12,
+            padding: "13px 24px",
+            minWidth: 180,
+            display: "flex",
+            alignItems: "center",
+            boxShadow: "0 4px 22px #262 20%",
+            zIndex: 99999
+          }}
+        >
+          <img
+            src={spotifyTrack.item.album.images[1]?.url || spotifyTrack.item.album.images[0].url}
+            alt="cover"
+            style={{
+              width: 54, height: 54, borderRadius: 7, marginRight: 14,
+              boxShadow: "0 0 12px #1db95433"
+            }}
+          />
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 700 }}>
+              {spotifyTrack.item.name}
+            </div>
+            <div style={{ fontSize: 13, color: "#40fa91" }}>
+              {spotifyTrack.item.artists.map(a=>a.name).join(", ")}
+            </div>
+            <div style={{ fontSize: 12, color: "#a3ffa3" }}>
+              {spotifyTrack.item.album.name}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modale */}
       <AuthModal
