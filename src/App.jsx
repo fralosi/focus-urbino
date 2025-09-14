@@ -11,17 +11,38 @@ const SPOTIFY_SCOPES = [
   "user-read-playback-state"
 ];
 
+// Genera code verifier e challenge per PKCE
+function generateCodeVerifier() {
+  const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+  const values = crypto.getRandomValues(new Uint8Array(128));
+  return values.reduce((acc, x) => acc + possible[x % possible.length], "");
+}
+
+async function generateCodeChallenge(codeVerifier) {
+  const data = new TextEncoder().encode(codeVerifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return btoa(String.fromCharCode.apply(null, [...new Uint8Array(digest)]))
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
+}
+
 function getSpotifyAuthUrl() {
-  const params = new URLSearchParams({
-    client_id: SPOTIFY_CLIENT_ID,
-    redirect_uri: SPOTIFY_REDIRECT_URI,
-    response_type: "token",
-    scope: SPOTIFY_SCOPES.join(" "),
-    show_dialog: "true"
+  const codeVerifier = generateCodeVerifier();
+  localStorage.setItem('code_verifier', codeVerifier);
+  
+  return generateCodeChallenge(codeVerifier).then(codeChallenge => {
+    const params = new URLSearchParams({
+      client_id: SPOTIFY_CLIENT_ID,
+      redirect_uri: SPOTIFY_REDIRECT_URI,
+      response_type: "code",
+      scope: SPOTIFY_SCOPES.join(" "),
+      code_challenge_method: "S256",
+      code_challenge: codeChallenge,
+      show_dialog: "true"
+    });
+    return `https://accounts.spotify.com/authorize?${params}`;
   });
-  const url = `https://accounts.spotify.com/authorize?${params}`;
-  console.log('SPOTIFY AUTH URL:', url);
-  return url;
 }
 
 function App() {
@@ -53,27 +74,49 @@ function App() {
     }
   }
 
-  // Recupera access_token Spotify dalla URL
+  // Scambia authorization code per access token
+  async function exchangeCodeForToken(code) {
+    const codeVerifier = localStorage.getItem('code_verifier');
+    
+    const response = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: new URLSearchParams({
+        client_id: SPOTIFY_CLIENT_ID,
+        grant_type: 'authorization_code',
+        code: code,
+        redirect_uri: SPOTIFY_REDIRECT_URI,
+        code_verifier: codeVerifier,
+      }),
+    });
+
+    const data = await response.json();
+    if (data.access_token) {
+      setSpotifyToken(data.access_token);
+      console.log('DEBUG SPOTIFY TOKEN SET:', data.access_token);
+      localStorage.removeItem('code_verifier');
+      // Pulisci URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    } else {
+      console.error('Errore nello scambio del token:', data);
+    }
+  }
+
+  // Recupera authorization code dalla URL
   useEffect(() => {
-    const hash = window.location.hash;
-    console.log('CHECKING URL HASH:', hash);
-    if (hash && hash.includes("access_token")) {
-      const params = new URLSearchParams(hash.substring(1));
-      const token = params.get("access_token");
-      const error = params.get("error");
-      
-      if (error) {
-        console.error('SPOTIFY ERROR:', error);
-        alert('Errore Spotify: ' + error);
-        return;
-      }
-      
-      if (token) {
-        setSpotifyToken(token);
-        console.log('DEBUG SPOTIFY TOKEN SET:', token);
-        // Pulisce l'URL
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const error = urlParams.get('error');
+    
+    console.log('CHECKING URL:', window.location.href);
+    
+    if (error) {
+      console.error('Spotify auth error:', error);
+    } else if (code) {
+      console.log('Got authorization code:', code);
+      exchangeCodeForToken(code);
     }
   }, []);
 
@@ -187,13 +230,10 @@ function App() {
     }
   }
 
-  // Spotify: Bottone login (CORRETTO!)
-  function handleSpotifyConnect() {
-    console.log('SPOTIFY CONNECT CLICKED');
-    const authUrl = getSpotifyAuthUrl();
-    console.log('REDIRECTING TO:', authUrl);
-    // Forza il redirect completo
-    window.location.href = authUrl;
+  // Spotify: Bottone login
+  async function handleSpotifyConnect() {
+    const authUrl = await getSpotifyAuthUrl();
+    window.location = authUrl;
   }
 
   // Recupera brano attuale Spotify e aggiorna anche la location
@@ -201,34 +241,19 @@ function App() {
     console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
     async function fetchCurrentlyPlaying() {
       if (!spotifyToken) return;
-      console.log('FETCHING SPOTIFY TRACK WITH TOKEN:', spotifyToken);
-      try {
-        const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-          headers: { Authorization: `Bearer ${spotifyToken}` }
-        });
-        
-        if (resp.status === 204) {
-          console.log('NO TRACK CURRENTLY PLAYING');
-          setSpotifyTrack(null);
-          updateLocationAndTrack(null);
-          return;
-        }
-        
-        if (resp.status === 401) {
-          console.log('SPOTIFY TOKEN EXPIRED');
-          setSpotifyToken(null);
-          return;
-        }
-        
-        const data = await resp.json();
-        console.log('DEBUG SPOTIFY TRACK RAW:', data);
-        setSpotifyTrack(data);
-        updateLocationAndTrack(data);
-      } catch (error) {
-        console.error('SPOTIFY FETCH ERROR:', error);
+      const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+        headers: { Authorization: `Bearer ${spotifyToken}` }
+      });
+      if (resp.status === 204) {
+        setSpotifyTrack(null);
+        updateLocationAndTrack(null);
+        return;
       }
+      const data = await resp.json();
+      setSpotifyTrack(data);
+      console.log('DEBUG SPOTIFY TRACK RAW:', data);
+      updateLocationAndTrack(data);
     }
-    
     if (spotifyToken) {
       fetchCurrentlyPlaying();
       const interval = setInterval(fetchCurrentlyPlaying, 20000);
@@ -329,7 +354,7 @@ function App() {
               </button>
             ) : (
               <span style={{ color: "#1DB954", fontWeight: 600 }}>
-                Spotify collegato! ✓
+                Spotify collegato!
               </span>
             )}
             <button
