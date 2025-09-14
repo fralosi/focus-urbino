@@ -31,6 +31,26 @@ function App() {
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyTrack, setSpotifyTrack] = useState(null);
 
+  // Funzione per assicurare che il profilo utente esista
+  async function ensureUserProfile(user) {
+    const { data, error } = await supabase
+      .from('users')
+      .select('id')
+      .eq('id', user.id)
+      .single();
+    
+    if (!data) {
+      await supabase.from('users').insert([
+        { 
+          id: user.id, 
+          email: user.email, 
+          username: user.email.split('@')[0]
+        }
+      ]);
+      console.log('Profilo utente creato automaticamente');
+    }
+  }
+
   // Recupera access_token Spotify dalla URL
   useEffect(() => {
     const hash = window.location.hash;
@@ -39,24 +59,29 @@ function App() {
       const token = params.get("access_token");
       if (token) {
         setSpotifyToken(token);
+        console.log('DEBUG SPOTIFY TOKEN SET:', token);
         window.location.hash = "";
-        if (token) {
-  setSpotifyToken(token);
-  console.log('DEBUG SPOTIFY TOKEN SET:', token);
-  window.location.hash = "";
-}
-
       }
     }
   }, []);
 
   // Auth listener
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data?.user ?? null);
+    supabase.auth.getUser().then(async ({ data }) => {
+      const currentUser = data?.user ?? null;
+      setUser(currentUser);
+      if (currentUser) {
+        await ensureUserProfile(currentUser);
+      }
     });
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_, session) => setUser(session?.user ?? null)
+      async (_, session) => {
+        const currentUser = session?.user ?? null;
+        setUser(currentUser);
+        if (currentUser) {
+          await ensureUserProfile(currentUser);
+        }
+      }
     );
     return () => subscription.unsubscribe();
   }, []);
@@ -68,34 +93,6 @@ function App() {
     }
     // eslint-disable-next-line
   }, [user]);
-
-  // Recupera brano attuale Spotify e aggiorna anche la location
-
-  useEffect(() => {
-  console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
-  // ...
-
-  async function fetchCurrentlyPlaying() {
-    if (!spotifyToken) return;
-    const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-      headers: { Authorization: `Bearer ${spotifyToken}` }
-    });
-    if (resp.status === 204) {
-      setSpotifyTrack(null);
-      updateLocationAndTrack(null);
-      return;
-    }
-    const data = await resp.json();
-    setSpotifyTrack(data);
-    console.log('DEBUG SPOTIFY TRACK RAW:', data); // <-- DEBUG qui!
-    updateLocationAndTrack(data);
-  }
-  if (spotifyToken) {
-    fetchCurrentlyPlaying();
-    const interval = setInterval(fetchCurrentlyPlaying, 20000);
-    return () => clearInterval(interval);
-  }
-}, [spotifyToken, userLocation, user]);
 
   async function askGeoLocation() {
     if (!navigator.geolocation) return;
@@ -129,7 +126,7 @@ function App() {
     setUser(null);
   };
 
-  // Fetch altri utenti in polling (select '*' per sicurezza e debug dettagliato)
+  // Fetch altri utenti in polling
   async function fetchOtherLocations() {
     if (!user) return;
     const { data, error } = await supabase
@@ -142,15 +139,7 @@ function App() {
       setOtherLocations(data || []);
     }
     if (error) {
-      console.error('Supabase fetch error:', {
-        error,
-        status: error.status,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      alert("Supabase fetch error: " + (error.message || error.details || JSON.stringify(error)));
+      console.error('Supabase fetch error:', error);
     }
   }
 
@@ -177,21 +166,12 @@ function App() {
       current_artist_name: spotifyTrackData?.item?.artists?.map(a => a.name).join(', ') ?? null,
       current_album_cover_url: spotifyTrackData?.item?.album?.images?.[0]?.url ?? null
     };
-    // Debug completo!
     console.log('SUPABASE UPSERT PAYLOAD:', payload);
     const { error } = await supabase
       .from('user_locations')
       .upsert(payload, { onConflict: 'user_id' });
     if (error) {
-      console.error('Supabase UPSERT ERROR:', {
-        error,
-        status: error.status,
-        message: error.message,
-        code: error.code,
-        details: error.details,
-        hint: error.hint
-      });
-      alert('Supabase UPSERT error: ' + (error.message || error.details || JSON.stringify(error)));
+      console.error('Supabase UPSERT ERROR:', error);
     }
   }
 
@@ -202,6 +182,7 @@ function App() {
 
   // Recupera brano attuale Spotify e aggiorna anche la location
   useEffect(() => {
+    console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
     async function fetchCurrentlyPlaying() {
       if (!spotifyToken) return;
       const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
@@ -214,7 +195,7 @@ function App() {
       }
       const data = await resp.json();
       setSpotifyTrack(data);
-      console.log('DEBUG SPOTIFY TRACK:', data);
+      console.log('DEBUG SPOTIFY TRACK RAW:', data);
       updateLocationAndTrack(data);
     }
     if (spotifyToken) {
