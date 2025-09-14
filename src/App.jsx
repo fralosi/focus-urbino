@@ -19,7 +19,9 @@ function getSpotifyAuthUrl() {
     scope: SPOTIFY_SCOPES.join(" "),
     show_dialog: "true"
   });
-  return `https://accounts.spotify.com/authorize?${params}`;
+  const url = `https://accounts.spotify.com/authorize?${params}`;
+  console.log('SPOTIFY AUTH URL:', url);
+  return url;
 }
 
 function App() {
@@ -54,13 +56,23 @@ function App() {
   // Recupera access_token Spotify dalla URL
   useEffect(() => {
     const hash = window.location.hash;
+    console.log('CHECKING URL HASH:', hash);
     if (hash && hash.includes("access_token")) {
       const params = new URLSearchParams(hash.substring(1));
       const token = params.get("access_token");
+      const error = params.get("error");
+      
+      if (error) {
+        console.error('SPOTIFY ERROR:', error);
+        alert('Errore Spotify: ' + error);
+        return;
+      }
+      
       if (token) {
         setSpotifyToken(token);
         console.log('DEBUG SPOTIFY TOKEN SET:', token);
-        window.location.hash = "";
+        // Pulisce l'URL
+        window.history.replaceState({}, document.title, window.location.pathname);
       }
     }
   }, []);
@@ -175,9 +187,13 @@ function App() {
     }
   }
 
-  // Spotify: Bottone login
+  // Spotify: Bottone login (CORRETTO!)
   function handleSpotifyConnect() {
-    window.location = getSpotifyAuthUrl();
+    console.log('SPOTIFY CONNECT CLICKED');
+    const authUrl = getSpotifyAuthUrl();
+    console.log('REDIRECTING TO:', authUrl);
+    // Forza il redirect completo
+    window.location.href = authUrl;
   }
 
   // Recupera brano attuale Spotify e aggiorna anche la location
@@ -185,19 +201,34 @@ function App() {
     console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
     async function fetchCurrentlyPlaying() {
       if (!spotifyToken) return;
-      const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
-        headers: { Authorization: `Bearer ${spotifyToken}` }
-      });
-      if (resp.status === 204) {
-        setSpotifyTrack(null);
-        updateLocationAndTrack(null);
-        return;
+      console.log('FETCHING SPOTIFY TRACK WITH TOKEN:', spotifyToken);
+      try {
+        const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
+          headers: { Authorization: `Bearer ${spotifyToken}` }
+        });
+        
+        if (resp.status === 204) {
+          console.log('NO TRACK CURRENTLY PLAYING');
+          setSpotifyTrack(null);
+          updateLocationAndTrack(null);
+          return;
+        }
+        
+        if (resp.status === 401) {
+          console.log('SPOTIFY TOKEN EXPIRED');
+          setSpotifyToken(null);
+          return;
+        }
+        
+        const data = await resp.json();
+        console.log('DEBUG SPOTIFY TRACK RAW:', data);
+        setSpotifyTrack(data);
+        updateLocationAndTrack(data);
+      } catch (error) {
+        console.error('SPOTIFY FETCH ERROR:', error);
       }
-      const data = await resp.json();
-      setSpotifyTrack(data);
-      console.log('DEBUG SPOTIFY TRACK RAW:', data);
-      updateLocationAndTrack(data);
     }
+    
     if (spotifyToken) {
       fetchCurrentlyPlaying();
       const interval = setInterval(fetchCurrentlyPlaying, 20000);
@@ -298,7 +329,7 @@ function App() {
               </button>
             ) : (
               <span style={{ color: "#1DB954", fontWeight: 600 }}>
-                Spotify collegato!
+                Spotify collegato! ✓
               </span>
             )}
             <button
