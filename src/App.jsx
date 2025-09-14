@@ -40,6 +40,12 @@ function App() {
       if (token) {
         setSpotifyToken(token);
         window.location.hash = "";
+        if (token) {
+  setSpotifyToken(token);
+  console.log('DEBUG SPOTIFY TOKEN SET:', token);
+  window.location.hash = "";
+}
+
       }
     }
   }, []);
@@ -64,7 +70,11 @@ function App() {
   }, [user]);
 
   // Recupera brano attuale Spotify e aggiorna anche la location
-useEffect(() => {
+
+  useEffect(() => {
+  console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
+  // ...
+
   async function fetchCurrentlyPlaying() {
     if (!spotifyToken) return;
     const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
