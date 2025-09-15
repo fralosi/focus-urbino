@@ -1,106 +1,169 @@
 import React, { useState, useEffect } from 'react';
 
-export default function PomodoroTimer() {
-  const [timeLeft, setTimeLeft] = useState(25 * 60);
+function PomodoroTimer({ onBreakStatusChange }) {
+  const [minutes, setMinutes] = useState(25);
+  const [seconds, setSeconds] = useState(0);
   const [isActive, setIsActive] = useState(false);
-  const [sessions, setSessions] = useState(0);
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-  };
-
-  const progress = ((25 * 60 - timeLeft) / (25 * 60)) * 100;
+  const [isBreak, setIsBreak] = useState(false);
+  const [isManualBreak, setIsManualBreak] = useState(false);
 
   useEffect(() => {
     let interval = null;
-    if (isActive && timeLeft > 0) {
+    if (isActive && !isManualBreak) {
       interval = setInterval(() => {
-        setTimeLeft(timeLeft => timeLeft - 1);
+        if (seconds > 0) {
+          setSeconds(seconds - 1);
+        } else if (minutes > 0) {
+          setMinutes(minutes - 1);
+          setSeconds(59);
+        } else {
+          // Timer finito - switch tra lavoro e pausa
+          if (isBreak) {
+            // Fine pausa, torna al lavoro
+            setMinutes(25);
+            setSeconds(0);
+            setIsBreak(false);
+            setIsActive(false);
+            onBreakStatusChange && onBreakStatusChange(false);
+          } else {
+            // Fine lavoro, inizia pausa
+            setMinutes(5);
+            setSeconds(0);
+            setIsBreak(true);
+            onBreakStatusChange && onBreakStatusChange(true);
+          }
+        }
       }, 1000);
-    } else if (timeLeft === 0) {
-      setIsActive(false);
-      setSessions(prev => prev + 1);
-      setTimeLeft(25 * 60);
-      if (Notification.permission === 'granted') {
-        new Notification('🍅 Pomodoro completato!');
-      }
     }
     return () => clearInterval(interval);
-  }, [isActive, timeLeft]);
+  }, [isActive, minutes, seconds, isBreak, isManualBreak, onBreakStatusChange]);
 
-  useEffect(() => {
-    if (Notification.permission === 'default') {
-      Notification.requestPermission();
+  const toggleTimer = () => {
+    setIsActive(!isActive);
+  };
+
+  const resetTimer = () => {
+    setIsActive(false);
+    setMinutes(25);
+    setSeconds(0);
+    setIsBreak(false);
+    setIsManualBreak(false);
+    onBreakStatusChange && onBreakStatusChange(false);
+  };
+
+  const toggleManualBreak = () => {
+    const newBreakStatus = !isManualBreak;
+    setIsManualBreak(newBreakStatus);
+    if (newBreakStatus) {
+      setIsActive(false);
     }
-  }, []);
+    onBreakStatusChange && onBreakStatusChange(newBreakStatus || isBreak);
+  };
+
+  const currentBreakStatus = isManualBreak || (isActive && isBreak);
 
   return (
-    <div className="modern-focus-timer">
-      {/* Header Minimal */}
-      <div className="timer-header">
-        <div className="timer-title">
-          <span className="timer-emoji">🍅</span>
-          <div>
-            <h3>Timer del Pomodoro</h3>
-            <p>{sessions} sessioni completate</p>
-          </div>
-        </div>
-        <div className="status-indicator">
-          <div className={`status-dot ${isActive ? 'active' : ''}`}></div>
+    <div style={{
+      background: 'rgba(17, 24, 39, 0.95)',
+      backdropFilter: 'blur(10px)',
+      border: '1px solid rgba(16, 185, 129, 0.3)',
+      borderRadius: '16px',
+      padding: '24px',
+      minWidth: '280px',
+      boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+    }}>
+      <div style={{
+        textAlign: 'center',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{
+          color: currentBreakStatus ? '#f59e0b' : '#10b981',
+          margin: '0 0 8px 0',
+          fontSize: '18px',
+          fontWeight: '600'
+        }}>
+          {currentBreakStatus ? '☕ Pausa' : isActive ? '📚 Focus' : '⏰ Pomodoro'}
+        </h3>
+        <div style={{
+          fontSize: '32px',
+          fontWeight: 'bold',
+          color: '#fff',
+          fontFamily: 'monospace'
+        }}>
+          {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
         </div>
       </div>
 
-      {/* Timer Central */}
-      <div className="timer-display">
-        <div className="time-text">{formatTime(timeLeft)}</div>
-        <div className="status-text">{isActive ? 'Focus Mode' : 'pronto'}</div>
-      </div>
-
-      {/* Progress Bar */}
-      <div className="progress-container">
-        <div className="progress-track">
-          <div 
-            className="progress-fill" 
-            style={{ width: `${progress}%` }}
-          ></div>
-        </div>
-      </div>
-
-      {/* Controls Modern */}
-      <div className="timer-controls">
+      <div style={{
+        display: 'flex',
+        gap: '8px',
+        justifyContent: 'center',
+        marginBottom: '16px'
+      }}>
         <button
-          onClick={() => setIsActive(!isActive)}
-          className={`primary-button ${isActive ? 'pause' : 'start'}`}
+          onClick={toggleTimer}
+          disabled={isManualBreak}
+          style={{
+            background: isActive ? '#ef4444' : '#10b981',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: isManualBreak ? 'not-allowed' : 'pointer',
+            opacity: isManualBreak ? 0.5 : 1
+          }}
         >
-          <span className="button-icon">{isActive ? '⏸' : '▶'}</span>
-          <span className="button-text">{isActive ? 'Pause' : 'Start'}</span>
+          {isActive ? 'Pausa' : 'Start'}
         </button>
-        
         <button
-          onClick={() => { setIsActive(false); setTimeLeft(25 * 60); }}
-          className="secondary-button"
+          onClick={resetTimer}
+          style={{
+            background: '#6b7280',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            padding: '8px 16px',
+            fontSize: '14px',
+            fontWeight: '600',
+            cursor: 'pointer'
+          }}
         >
-          <span className="reset-icon">↻</span>
+          Reset
         </button>
       </div>
 
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-item">
-          <div className="stat-value">{Math.floor((25 * 60 - timeLeft) / 60)}</div>
-          <div className="stat-label">Minuti</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value text-emerald">{sessions}</div>
-          <div className="stat-label">Sessioni</div>
-        </div>
-        <div className="stat-item">
-          <div className="stat-value text-blue">{sessions * 25}</div>
-          <div className="stat-label">Totale</div>
-        </div>
+      <button
+        onClick={toggleManualBreak}
+        style={{
+          width: '100%',
+          background: isManualBreak ? '#ef4444' : '#f59e0b',
+          color: 'white',
+          border: 'none',
+          borderRadius: '8px',
+          padding: '10px',
+          fontSize: '14px',
+          fontWeight: '600',
+          cursor: 'pointer'
+        }}
+      >
+        {isManualBreak ? '🔴 Termina Pausa' : '☕ Pausa Manuale'}
+      </button>
+
+      <div style={{
+        marginTop: '12px',
+        padding: '8px',
+        background: 'rgba(16, 185, 129, 0.1)',
+        borderRadius: '6px',
+        fontSize: '12px',
+        color: '#9ca3af',
+        textAlign: 'center'
+      }}>
+        {currentBreakStatus ? 'In pausa - Rilassati!' : 'Concentrati sul tuo obiettivo'}
       </div>
     </div>
   );
 }
+
+export default PomodoroTimer;

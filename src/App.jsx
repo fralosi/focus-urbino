@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { supabase } from "./lib/supabase";
 import Map from "./components/Map";
 import PomodoroTimer from "./components/PomodoroTimer";
+import BreakBuddies from "./components/BreakBuddies";
 import AuthModal from "./components/AuthModal";
 
 const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f";
@@ -53,6 +54,8 @@ function App() {
   const [otherLocations, setOtherLocations] = useState([]);
   const [spotifyToken, setSpotifyToken] = useState(null);
   const [spotifyTrack, setSpotifyTrack] = useState(null);
+  const [isOnBreak, setIsOnBreak] = useState(false);
+  const [usersOnBreak, setUsersOnBreak] = useState([]);
 
   // Funzione per assicurare che il profilo utente esista
   async function ensureUserProfile(user) {
@@ -73,6 +76,11 @@ function App() {
       console.log('Profilo utente creato automaticamente');
     }
   }
+
+  // Gestisce il cambio di stato pausa dal timer
+  const handleBreakStatusChange = (isBreak) => {
+    setIsOnBreak(isBreak);
+  };
 
   // Scambia authorization code per access token
   async function exchangeCodeForToken(code) {
@@ -97,7 +105,6 @@ function App() {
       setSpotifyToken(data.access_token);
       console.log('DEBUG SPOTIFY TOKEN SET:', data.access_token);
       localStorage.removeItem('code_verifier');
-      // Pulisci URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
       console.error('Errore nello scambio del token:', data);
@@ -109,8 +116,6 @@ function App() {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
     const error = urlParams.get('error');
-    
-    console.log('CHECKING URL:', window.location.href);
     
     if (error) {
       console.error('Spotify auth error:', error);
@@ -192,6 +197,9 @@ function App() {
       .gte("updated_at", new Date(Date.now() - 1000 * 60 * 10).toISOString());
     if (!error) {
       setOtherLocations(data || []);
+      // Filtra gli utenti in pausa
+      const breakUsers = (data || []).filter(loc => loc.is_on_break);
+      setUsersOnBreak(breakUsers);
     }
     if (error) {
       console.error('Supabase fetch error:', error);
@@ -216,6 +224,7 @@ function App() {
       latitude: userLocation.lat,
       longitude: userLocation.lng,
       is_active: true,
+      is_on_break: isOnBreak,
       updated_at: new Date().toISOString(),
       current_track_name: spotifyTrackData?.item?.name ?? null,
       current_artist_name: spotifyTrackData?.item?.artists?.map(a => a.name).join(', ') ?? null,
@@ -230,6 +239,14 @@ function App() {
     }
   }
 
+  // Aggiorna quando cambia lo stato pausa
+  useEffect(() => {
+    if (user && userLocation) {
+      updateLocationAndTrack(spotifyTrack);
+    }
+    // eslint-disable-next-line
+  }, [isOnBreak]);
+
   // Spotify: Bottone login
   async function handleSpotifyConnect() {
     const authUrl = await getSpotifyAuthUrl();
@@ -238,7 +255,6 @@ function App() {
 
   // Recupera brano attuale Spotify e aggiorna anche la location
   useEffect(() => {
-    console.log('DEBUG USEEFFECT spotifyToken:', spotifyToken, 'userLocation:', userLocation, 'user:', user);
     async function fetchCurrentlyPlaying() {
       if (!spotifyToken) return;
       const resp = await fetch("https://api.spotify.com/v1/me/player/currently-playing", {
@@ -303,7 +319,8 @@ function App() {
           user={user} 
           userLocation={userLocation} 
           otherLocations={otherLocations} 
-          spotifyTrack={spotifyTrack} 
+          spotifyTrack={spotifyTrack}
+          userIsOnBreak={isOnBreak}
         />
       </div>
 
@@ -330,11 +347,12 @@ function App() {
         {user ? (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span style={{
-              background: "#10b981", color: "white",
+              background: isOnBreak ? "#f59e0b" : "#10b981", 
+              color: "white",
               borderRadius: 100, padding: "8px 14px",
               fontWeight: 600
             }}>
-              {user.email}
+              {isOnBreak ? "☕ In pausa" : "📚 " + user.email}
             </span>
             {/* SPOTIFY BUTTON / STATUS */}
             {!spotifyToken ? (
@@ -390,8 +408,14 @@ function App() {
         top: "110px",
         zIndex: 10
       }}>
-        <PomodoroTimer />
+        <PomodoroTimer onBreakStatusChange={handleBreakStatusChange} />
       </div>
+
+      {/* Lista utenti in pausa */}
+      <BreakBuddies 
+        usersOnBreak={usersOnBreak} 
+        isVisible={isOnBreak} 
+      />
 
       {/* BOX ORA IN ASCOLTO SPOTIFY */}
       {spotifyToken && spotifyTrack && spotifyTrack.item && (
