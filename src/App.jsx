@@ -65,6 +65,14 @@ function App() {
   const [usersOnBreak, setUsersOnBreak] = useState([]);
   const [mapMessages, setMapMessages] = useState([]);
 
+  // DEBUG LOG - per vedere cosa succede
+  useEffect(() => {
+    console.log('=== SPOTIFY DEBUG ===');
+    console.log('spotifyToken:', spotifyToken ? 'PRESENTE' : 'NULL');
+    console.log('user:', user ? 'PRESENTE' : 'NULL');
+    console.log('SpotifyPlayer dovrebbe essere visibile:', !!(user));
+  }, [user, spotifyToken]);
+
   // Funzione per assicurare che il profilo utente esista
   async function ensureUserProfile(user) {
     const { data, error } = await supabase
@@ -93,6 +101,7 @@ function App() {
   // Scambia authorization code per access token
   async function exchangeCodeForToken(code) {
     const codeVerifier = localStorage.getItem('code_verifier');
+    console.log('Exchanging code for token...', code);
     
     const response = await fetch('https://accounts.spotify.com/api/token', {
       method: 'POST',
@@ -109,9 +118,11 @@ function App() {
     });
 
     const data = await response.json();
+    console.log('Token exchange response:', data);
+    
     if (data.access_token) {
       setSpotifyToken(data.access_token);
-      console.log('DEBUG SPOTIFY TOKEN SET:', data.access_token);
+      console.log('SPOTIFY TOKEN SET SUCCESS');
       localStorage.removeItem('code_verifier');
       window.history.replaceState({}, document.title, window.location.pathname);
     } else {
@@ -125,10 +136,12 @@ function App() {
     const code = urlParams.get('code');
     const error = urlParams.get('error');
     
+    console.log('URL Check - Code:', code, 'Error:', error);
+    
     if (error) {
       console.error('Spotify auth error:', error);
     } else if (code) {
-      console.log('Got authorization code:', code);
+      console.log('Got authorization code, exchanging...');
       exchangeCodeForToken(code);
     }
   }, []);
@@ -138,6 +151,7 @@ function App() {
     supabase.auth.getUser().then(async ({ data }) => {
       const currentUser = data?.user ?? null;
       setUser(currentUser);
+      console.log('User set:', currentUser ? 'LOGGED IN' : 'NOT LOGGED');
       if (currentUser) {
         await ensureUserProfile(currentUser);
       }
@@ -192,6 +206,7 @@ function App() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     setUser(null);
+    setSpotifyToken(null); // Reset Spotify token
   };
 
   // Fetch altri utenti in polling
@@ -296,6 +311,7 @@ function App() {
 
   // Spotify: Bottone login
   async function handleSpotifyConnect() {
+    console.log('handleSpotifyConnect called');
     const authUrl = await getSpotifyAuthUrl();
     window.location = authUrl;
   }
@@ -345,6 +361,21 @@ function App() {
       minHeight: "100vh",
       overflow: "hidden"
     }}>
+      {/* DEBUG INFO - RIMUOVERE DOPO TEST */}
+      <div style={{
+        position: 'fixed',
+        top: '10px',
+        left: '10px',
+        background: 'rgba(0,0,0,0.8)',
+        color: 'white',
+        padding: '10px',
+        borderRadius: '5px',
+        fontSize: '12px',
+        zIndex: 9999
+      }}>
+        DEBUG: User={user ? '✅' : '❌'} | Spotify={spotifyToken ? '✅' : '❌'} | Player={user ? '✅ DOVREBBE ESSERE VISIBILE' : '❌'}
+      </div>
+
       {/* TOAST benvenuto */}
       {welcomeMsg && (
         <div
@@ -438,15 +469,14 @@ function App() {
         )}
       </header>
 
-      {/* Spotify Player - posizionato in alto a destra */}
-      {user && (
-        <SpotifyPlayer
-          spotifyToken={spotifyToken}
-          user={user}
-          onConnect={handleSpotifyConnect}
-          currentTrack={spotifyTrack}
-        />
-      )}
+      {/* SPOTIFY PLAYER - DOVREBBE APPARIRE SEMPRE SE USER È LOGGATO */}
+      {console.log('Rendering SpotifyPlayer - user:', user ? 'YES' : 'NO')}
+      <SpotifyPlayer
+        spotifyToken={spotifyToken}
+        user={user}
+        onConnect={handleSpotifyConnect}
+        currentTrack={spotifyTrack}
+      />
 
       {/* TIMER */}
       <div style={{
