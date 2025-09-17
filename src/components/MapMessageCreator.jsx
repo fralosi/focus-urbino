@@ -61,13 +61,13 @@ function MapMessageCreator({ user, userLocation, onMessageSent, isVisible }) {
         <button
           onClick={() => setIsOpen(true)}
           style={{
-            width: '56px',
-            height: '56px',
+            width: '70px',
+            height: '70px',
             borderRadius: '50%',
             background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
             color: 'white',
             border: 'none',
-            fontSize: '20px',
+            fontSize: '25px',
             cursor: 'pointer',
             boxShadow: '0 4px 12px rgba(59, 130, 246, 0.4)',
             display: 'flex',

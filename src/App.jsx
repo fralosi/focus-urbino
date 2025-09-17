@@ -6,12 +6,18 @@ import BreakBuddies from "./components/BreakBuddies";
 import MapMessageCreator from "./components/MapMessageCreator";
 import MapMessages from "./components/MapMessages";
 import AuthModal from "./components/AuthModal";
+import SpotifyPlayer from "./components/SpotifyPlayer";
+
 
 const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f";
 const SPOTIFY_REDIRECT_URI = "https://focus-urbino.vercel.app/";
 const SPOTIFY_SCOPES = [
   "user-read-currently-playing",
-  "user-read-playback-state"
+  "user-read-playback-state",
+  "user-modify-playback-state",
+  "streaming",
+  "user-read-email",
+  "user-read-private"
 ];
 
 // Genera code verifier e challenge per PKCE
@@ -453,6 +459,16 @@ function App() {
           </button>
         )}
       </header>
+
+      {/* QUI! Spotify player sempre visibile in alto a destra */}
+    {user && (
+      <SpotifyPlayer
+        spotifyToken={spotifyToken}
+        user={user}
+        onConnect={handleSpotifyConnect}
+        currentTrack={spotifyTrack}
+      />
+    )}
 
       {/* TIMER */}
       <div style={{
