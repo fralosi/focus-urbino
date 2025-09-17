@@ -3,6 +3,8 @@ import { supabase } from "./lib/supabase";
 import Map from "./components/Map";
 import PomodoroTimer from "./components/PomodoroTimer";
 import BreakBuddies from "./components/BreakBuddies";
+import MapMessageCreator from "./components/MapMessageCreator";
+import MapMessages from "./components/MapMessages";
 import AuthModal from "./components/AuthModal";
 
 const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f";
@@ -56,6 +58,7 @@ function App() {
   const [spotifyTrack, setSpotifyTrack] = useState(null);
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [usersOnBreak, setUsersOnBreak] = useState([]);
+  const [mapMessages, setMapMessages] = useState([]);
 
   // Funzione per assicurare che il profilo utente esista
   async function ensureUserProfile(user) {
@@ -206,6 +209,36 @@ function App() {
     }
   }
 
+  // Fetch messaggi mappa
+  async function fetchMapMessages() {
+    if (!user || !userLocation) return;
+    
+    // Calcola area di interesse (raggio ~5km dalla posizione utente)
+    const latRange = 0.045; // circa 5km
+    const lngRange = 0.045;
+    
+    const { data, error } = await supabase
+      .from("map_messages")
+      .select(`
+        *,
+        users:user_id (username)
+      `)
+      .eq("is_active", true)
+      .gt("expires_at", new Date().toISOString())
+      .gte("latitude", userLocation.lat - latRange)
+      .lte("latitude", userLocation.lat + latRange)
+      .gte("longitude", userLocation.lng - lngRange)
+      .lte("longitude", userLocation.lng + lngRange)
+      .order("created_at", { ascending: false });
+    
+    if (!error) {
+      setMapMessages(data || []);
+    }
+    if (error) {
+      console.error('Errore fetch messaggi mappa:', error);
+    }
+  }
+
   useEffect(() => {
     if (!user) return;
     fetchOtherLocations();
@@ -215,6 +248,15 @@ function App() {
     return () => clearInterval(interval);
     // eslint-disable-next-line
   }, [user]);
+
+  // useEffect per fetch messaggi mappa
+  useEffect(() => {
+    if (!user || !userLocation) return;
+    fetchMapMessages();
+    const interval = setInterval(fetchMapMessages, 15000); // ogni 15 secondi
+    return () => clearInterval(interval);
+    // eslint-disable-next-line
+  }, [user, userLocation]);
 
   // Funzione centrale per aggiornare posizione/traccia
   async function updateLocationAndTrack(spotifyTrackData) {
@@ -276,6 +318,17 @@ function App() {
       return () => clearInterval(interval);
     }
   }, [spotifyToken, userLocation, user]);
+
+  // Callback per quando viene inviato un messaggio
+  const handleMessageSent = () => {
+    fetchMapMessages(); // Ricarica i messaggi
+  };
+
+  // Callback per click su messaggio
+  const handleMessageClick = (message) => {
+    // Puoi implementare azioni specifiche, es: zoom sulla posizione del messaggio
+    console.log('Clicked message:', message);
+  };
 
   return (
     <div style={{
@@ -416,6 +469,22 @@ function App() {
         usersOnBreak={usersOnBreak} 
         isVisible={isOnBreak} 
       />
+
+      {/* Messaggi sulla mappa */}
+      {user && userLocation && (
+        <>
+          <MapMessages 
+            messages={mapMessages}
+            onMessageClick={handleMessageClick}
+          />
+          <MapMessageCreator
+            user={user}
+            userLocation={userLocation}
+            onMessageSent={handleMessageSent}
+            isVisible={true}
+          />
+        </>
+      )}
 
       {/* BOX ORA IN ASCOLTO SPOTIFY */}
       {spotifyToken && spotifyTrack && spotifyTrack.item && (
