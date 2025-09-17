@@ -1,4 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
+import { supabase } from "../lib/supabase";
+
 
 // Sostituisci con i tuoi dati Supabase
 const supabaseUrl = 'https://hhmljetjcnuypinfrlfm.supabase.co'
