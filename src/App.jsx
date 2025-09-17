@@ -5,9 +5,8 @@ import PomodoroTimer from "./components/PomodoroTimer";
 import BreakBuddies from "./components/BreakBuddies";
 import MapMessageCreator from "./components/MapMessageCreator";
 import MapMessages from "./components/MapMessages";
-import AuthModal from "./components/AuthModal";
 import SpotifyPlayer from "./components/SpotifyPlayer";
-
+import AuthModal from "./components/AuthModal";
 
 const SPOTIFY_CLIENT_ID = "d7acc5bbad3a4016b92b5237d91f239f";
 const SPOTIFY_REDIRECT_URI = "https://focus-urbino.vercel.app/";
@@ -413,27 +412,6 @@ function App() {
             }}>
               {isOnBreak ? "☕ In pausa" : "📚 " + user.email}
             </span>
-            {/* SPOTIFY BUTTON / STATUS */}
-            {!spotifyToken ? (
-              <button
-                onClick={handleSpotifyConnect}
-                style={{
-                  background: "#1DB954",
-                  color: "white",
-                  fontWeight: 600,
-                  padding: "10px 18px",
-                  border: "none",
-                  borderRadius: 8,
-                  cursor: "pointer"
-                }}
-              >
-                🎵 Collega Spotify
-              </button>
-            ) : (
-              <span style={{ color: "#1DB954", fontWeight: 600 }}>
-                Spotify collegato!
-              </span>
-            )}
             <button
               onClick={handleLogout}
               style={{
@@ -460,15 +438,15 @@ function App() {
         )}
       </header>
 
-      {/* QUI! Spotify player sempre visibile in alto a destra */}
-    {user && (
-      <SpotifyPlayer
-        spotifyToken={spotifyToken}
-        user={user}
-        onConnect={handleSpotifyConnect}
-        currentTrack={spotifyTrack}
-      />
-    )}
+      {/* Spotify Player - posizionato in alto a destra */}
+      {user && (
+        <SpotifyPlayer
+          spotifyToken={spotifyToken}
+          user={user}
+          onConnect={handleSpotifyConnect}
+          currentTrack={spotifyTrack}
+        />
+      )}
 
       {/* TIMER */}
       <div style={{
@@ -500,47 +478,6 @@ function App() {
             isVisible={true}
           />
         </>
-      )}
-
-      {/* BOX ORA IN ASCOLTO SPOTIFY */}
-      {spotifyToken && spotifyTrack && spotifyTrack.item && (
-        <div
-          style={{
-            position: "fixed",
-            top: 90,
-            right: 35,
-            background: "#181c22",
-            color: "#fff",
-            border: "2px solid #1DB954",
-            borderRadius: 12,
-            padding: "13px 24px",
-            minWidth: 180,
-            display: "flex",
-            alignItems: "center",
-            boxShadow: "0 4px 22px #262 20%",
-            zIndex: 99999
-          }}
-        >
-          <img
-            src={spotifyTrack.item.album.images[1]?.url || spotifyTrack.item.album.images[0].url}
-            alt="cover"
-            style={{
-              width: 54, height: 54, borderRadius: 7, marginRight: 14,
-              boxShadow: "0 0 12px #1db95433"
-            }}
-          />
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700 }}>
-              {spotifyTrack.item.name}
-            </div>
-            <div style={{ fontSize: 13, color: "#40fa91" }}>
-              {spotifyTrack.item.artists.map(a => a.name).join(", ")}
-            </div>
-            <div style={{ fontSize: 12, color: "#a3ffa3" }}>
-              {spotifyTrack.item.album.name}
-            </div>
-          </div>
-        </div>
       )}
 
       {/* Modale */}
